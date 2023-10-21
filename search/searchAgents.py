@@ -40,6 +40,7 @@ from game import Actions
 import util
 import time
 import search
+import random
 
 class GoWestAgent(Agent):
     "An agent that goes West until it can't."
@@ -588,3 +589,86 @@ def mazeDistance(point1, point2, gameState):
     assert not walls[x2][y2], 'point2 is a wall: ' + str(point2)
     prob = PositionSearchProblem(gameState, start=point1, goal=point2, warn=False, visualize=False)
     return len(search.bfs(prob))
+
+class EscapeRoomProblem:
+
+    def __init__(self, startingGameState):
+        self.startState = self.initializeState(startingGameState)
+
+    def initializeState(self, gameState):
+        # Initialize the state based on the gameState
+        walls = gameState.getWalls()
+        print(walls)
+        food = gameState.getFood().asList()
+
+        # Generate random values for dots and walls
+        random.seed(0) # Set a seed for the random function
+        dot_values = list(range(1, len(food) + 1))
+        random.shuffle(dot_values)
+        dots = [(x, y, v) for (x, y), v in zip(food, dot_values)]
+
+        # Create walls with matching unique values
+        wall_values = list(range(1, len(food) + 1))
+        random.shuffle(wall_values)
+        walls = [(x, y, v) for (x, y), v in zip(food, wall_values)]
+
+        return gameState.getPacmanPosition(), 0, dots, walls
+
+    def getStartState(self):
+        return self.startState
+
+    def isGoalState(self, state):
+        _, key, dots, walls = state
+        return key > 0 and any(dot[2] == key for dot in dots) and any(wall[2] for wall in walls)
+
+    def getSuccessors(self, state):
+        successors = []
+        pacmanPos, key, dots, walls = state
+
+        for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+            x, y = pacmanPos
+            dx, dy = Actions.directionToVector(action)
+            nextX, nextY = int(x + dx), int(x + dy)
+
+            if not state.getWalls()[nextX][nextY]:
+                nextPacmanPos = (nextX, nextY)
+                nextKey = key
+
+                # Check if Pacman can pick up a dot
+                for dot in dots:
+                    if nextPacmanPos == (dot[0], dot[1]) and dot[2] > 0:
+                        nextKey = dot[2]
+                        dots.remove(dot)
+
+                successors.append(((nextPacmanPos, nextKey, dots, walls), action, 1))
+
+        return successors
+
+    def getCostOfActions(self, actions):
+        # Calculate the cost of a sequence of actions
+        return len(actions)
+
+class AStarEscapeRoomAgent(SearchAgent):
+    "A SearchAgent for EscapeRoomProblem using A* and my escapeRoomHeuristic"
+    def __int__(self):
+        self.searchFunction = lambda prob: search.aStarSearch(prob, escapeRoomHeuristic)
+        self.searchType = EscapeRoomProblem
+
+
+def escapeRoomHeuristic(state, problem):
+    pacmanPos, key, dots, walls = state
+    print(state)
+
+    # Calculate the heuristic based on the remaining dots and walls
+    dot_values = set(dot[2] for dot in dots)
+    wall_values = set(wall[2] for wall in walls)
+
+    # The heuristic is the maximum of the minimum distances to remaining dots and walls
+    if dot_values and wall_values:
+        print("ok1")
+        min_dot_distance = min(mazeDistance(pacmanPos, dot[0:2], state) for dot in dots if dot[2] in dot_values)
+        min_wall_distance = min(mazeDistance(pacmanPos, wall[0:2], state) for wall in walls if wall[2] in wall_values)
+        return max(min_dot_distance, min_wall_distance)
+    else:
+        print("ok2")
+        return 0

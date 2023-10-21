@@ -47,6 +47,7 @@ from util import nearestPoint
 from util import manhattanDistance
 import util, layout
 import sys, types, time, random, os
+from searchAgents import *
 
 ###################################################
 # YOUR INTERFACE TO THE PACMAN WORLD: A GameState #
