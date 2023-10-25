@@ -161,7 +161,6 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     priority_queue = util.PriorityQueue()
     priority_queue.push((problem.getStartState(), [], 0), 0)
     visited = set()
-
     while not priority_queue.isEmpty():
         state, actions, cost = priority_queue.pop()
 
@@ -176,6 +175,33 @@ def aStarSearch(problem, heuristic=nullHeuristic):
                 heuristic_cost = new_cost + heuristic(successor, problem)
                 priority_queue.push((successor, new_actions, new_cost), heuristic_cost)
     return []
+
+# def aStarSearch(problem, heuristic=nullHeuristic):
+#     """Search the node that has the lowest combined cost and heuristic first."""
+#     "*** YOUR CODE HERE ***"
+#     priority_queue = util.PriorityQueue()
+#     start_state = problem.getStartState()
+#     start_state_tuple = (start_state, [])  # Convert the start state to a tuple
+#     priority_queue.push(start_state_tuple, 0)
+#     visited = set()
+#
+#     while not priority_queue.isEmpty():
+#         current_node = priority_queue.pop()
+#         state, actions, cost = current_node[0], current_node[1], current_node[2]
+#
+#         if problem.isGoalState(state):
+#             return actions
+#         if state not in visited:
+#             visited.add(state)
+#             successors = problem.getSuccessors(state)
+#             for successor, action, step_cost in successors:
+#                 new_actions = actions + [action]
+#                 new_cost = cost + step_cost
+#                 heuristic_cost = new_cost + heuristic(successor, problem)
+#                 successor_tuple = (successor, new_actions)
+#                 priority_queue.push((successor_tuple, new_actions, new_cost), heuristic_cost)
+#
+#     return []
 
 
 # Abbreviations

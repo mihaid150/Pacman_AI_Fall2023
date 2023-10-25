@@ -486,18 +486,25 @@ def foodHeuristic(state, problem):
     """
 
     position, foodGrid = state
+
     "*** YOUR CODE HERE ***"
     total_distance = 0
     food_coordinates_list = foodGrid.asList()
+    problem.heuristicInfo['wallCount'] = problem.walls.count()
 
-    if len(food_coordinates_list) == 0:
+    if problem.isGoalState(state):
         return 0
 
-    for food in food_coordinates_list:
-        food_distance = mazeDistance(position, food, problem.startingGameState)
-        if food_distance > total_distance:
-            total_distance = food_distance
-    return total_distance
+    distance = []
+    flag = 0
+
+    for item in food_coordinates_list:
+        distance.append(mazeDistance(position, item, problem.startingGameState))
+
+        if flag == 4 and problem.heuristicInfo['wallCount'] > 20:
+            break
+        flag += 1
+    return max(distance)
 
 
 class ClosestDotSearchAgent(SearchAgent):
@@ -593,82 +600,103 @@ def mazeDistance(point1, point2, gameState):
 class EscapeRoomProblem:
 
     def __init__(self, startingGameState):
-        self.startState = self.initializeState(startingGameState)
+        # self.start = (startingGameState.getPacmanPosition(), startingGameState.getFood())
+        self.walls = startingGameState.getWalls()
+        self.food = startingGameState.getFood()
+        self.food_len = len(self.food.asList())
+        self.startingGameState = startingGameState
+        self._expanded = 0
+        self.heuristicInfo = {}
 
-    def initializeState(self, gameState):
-        # Initialize the state based on the gameState
-        walls = gameState.getWalls()
-        print(walls)
-        food = gameState.getFood().asList()
+        self.keys_list = list(range(1, 101))
+        random.shuffle(self.keys_list)
+        self.goal_key = random.choice(self.keys_list[:self.food_len])
+        self.food_keys = list(zip(self.food.asList(), self.keys_list))
 
-        # Generate random values for dots and walls
-        random.seed(0) # Set a seed for the random function
-        dot_values = list(range(1, len(food) + 1))
-        random.shuffle(dot_values)
-        dots = [(x, y, v) for (x, y), v in zip(food, dot_values)]
-
-        # Create walls with matching unique values
-        wall_values = list(range(1, len(food) + 1))
-        random.shuffle(wall_values)
-        walls = [(x, y, v) for (x, y), v in zip(food, wall_values)]
-
-        return gameState.getPacmanPosition(), 0, dots, walls
+        random.shuffle(self.keys_list)
+        self.walls_keys = list(zip(self.walls.asList(), self.keys_list))
+        self.start = (startingGameState.getPacmanPosition(), self.food_keys, self.walls_keys)
 
     def getStartState(self):
-        return self.startState
+        return self.start
+
+    def isGoalKey(self, state):
+        food_keys_list = state[1]
+        keys_list = [key for _, key in food_keys_list]
+        if self.goal_key in keys_list:
+            return False
+        else:
+            return True
+
 
     def isGoalState(self, state):
-        _, key, dots, walls = state
-        return key > 0 and any(dot[2] == key for dot in dots) and any(wall[2] for wall in walls)
+        walls_keys_list = state[2]
+        keys_list = [key for _, key in walls_keys_list]
+        if self.goal_key in keys_list:
+            return False
+        else:
+            return True
+
 
     def getSuccessors(self, state):
         successors = []
-        pacmanPos, key, dots, walls = state
-
-        for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
-            x, y = pacmanPos
-            dx, dy = Actions.directionToVector(action)
-            nextX, nextY = int(x + dx), int(x + dy)
-
-            if not state.getWalls()[nextX][nextY]:
-                nextPacmanPos = (nextX, nextY)
-                nextKey = key
-
-                # Check if Pacman can pick up a dot
-                for dot in dots:
-                    if nextPacmanPos == (dot[0], dot[1]) and dot[2] > 0:
-                        nextKey = dot[2]
-                        dots.remove(dot)
-
-                successors.append(((nextPacmanPos, nextKey, dots, walls), action, 1))
-
+        self._expanded += 1
+        for direction in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+            x, y = state[0]
+            dx, dy = Actions.directionToVector(direction)
+            nextx, nexty = int(x + dx), int(y + dy)
+            if not self.walls[nextx][nexty]:
+                nextFood = state[1].copy()
+                nextFood[nextx][nexty] = False
+                successors.append((((nextx, nexty), nextFood), direction, 1))
         return successors
 
     def getCostOfActions(self, actions):
-        # Calculate the cost of a sequence of actions
-        return len(actions)
+        x, y = self.getStartState()[0]
+        cost = 0
+        for action in actions:
+            # figure out the next state and see whether it's legal
+            dx, dy = Actions.directionToVector(action)
+            x, y = int(x + dx), int(y + dy)
+            if self.walls[x][y]:
+                return 999999
+            cost += 1
+        return cost
 
 class AStarEscapeRoomAgent(SearchAgent):
     "A SearchAgent for EscapeRoomProblem using A* and my escapeRoomHeuristic"
-    def __int__(self):
+    def __init__(self):
         self.searchFunction = lambda prob: search.aStarSearch(prob, escapeRoomHeuristic)
         self.searchType = EscapeRoomProblem
 
 
 def escapeRoomHeuristic(state, problem):
-    pacmanPos, key, dots, walls = state
-    print(state)
 
-    # Calculate the heuristic based on the remaining dots and walls
-    dot_values = set(dot[2] for dot in dots)
-    wall_values = set(wall[2] for wall in walls)
+    position, food_keys, walls_keys = state
+    wanted_key = problem.goal_key
 
-    # The heuristic is the maximum of the minimum distances to remaining dots and walls
-    if dot_values and wall_values:
-        print("ok1")
-        min_dot_distance = min(mazeDistance(pacmanPos, dot[0:2], state) for dot in dots if dot[2] in dot_values)
-        min_wall_distance = min(mazeDistance(pacmanPos, wall[0:2], state) for wall in walls if wall[2] in wall_values)
-        return max(min_dot_distance, min_wall_distance)
-    else:
-        print("ok2")
-        return 0
+    # Extract the keys, food and walls from the state
+    food_coordinates_list = [food for food, _ in food_keys]
+    keys_list = [key for _, key in food_keys]
+    walls_coordinates_list = [wall for wall, _ in walls_keys]
+
+    # Check if we have the wanted key
+    if wanted_key in keys_list:
+        # If we have the key, calculate the distance to the goal food associated with the goal key
+        for food, key in food_keys:
+            if key == wanted_key:
+                if food == position:
+                    # We are at the goal, no additional cost
+                    return 0
+                else:
+                    return mazeDistance(position, food, problem.startingGameState)
+
+    # If we don't have the key, find the key first
+    min_distance_to_key = float['key']
+    for food, key in food_keys:
+        if key == wanted_key:
+            dist = mazeDistance(position, food, problem.startingGameState)
+            min_distance_to_key = min(min_distance_to_key, dist)
+
+    # Return the distance to the key (needed to access the goal food)
+    return min_distance_to_key
