@@ -125,6 +125,24 @@ class GameState:
         GameState.explored.add(state)
         return state
 
+    def escapeRoomGenerateSuccessor (self, foundKey, agentIndex, action):
+
+
+        if self.isWin() or self.isLose(): raise Exception('Can\'t generate a successor of a terminal state.')
+        state = GameState(self)
+        if agentIndex == 0:
+            state.data._eaten = [False for i in range(state.getNumAgents())]
+            PacmanRules.applyEscapeRoomAction(foundKey, state, action)
+
+        if agentIndex == 0:
+            state.data.scoreChange += -TIME_PENALTY
+        state.data._agentMoved = agentIndex
+        state.data.score += state.data.scoreChange
+        GameState.explored.add(self)
+        GameState.explored.add(state)
+        return state
+
+
     def getLegalPacmanActions( self ):
         return self.getLegalActions( 0 )
 
@@ -289,6 +307,9 @@ class ClassicGameRules:
         if state.isWin(): self.win(state, game)
         if state.isLose(): self.lose(state, game)
 
+    def customProcess(self, state, game):
+        self.win(state, game)
+
     def win( self, state, game ):
         if not self.quiet: print "Pacman emerges victorious! Score: %d" % state.data.score
         game.gameOver = True
@@ -357,6 +378,24 @@ class PacmanRules:
             PacmanRules.consume( nearest, state )
     applyAction = staticmethod( applyAction )
 
+    def applyEscapeRoomAction(foundKey, state, action):
+        legal = PacmanRules.getLegalActions(state)
+        if action not in legal:
+            raise Exception("Illegal action")
+        pacmanState = state.data.agentStates[0]
+
+        vector = Actions.directionToVector(action, PacmanRules.PACMAN_SPEED)
+        pacmanState.configuration = pacmanState.configuration.generateSuccessor(vector)
+        # Eat
+        next = pacmanState.configuration.getPosition()
+        nearest = nearestPoint(next)
+        if manhattanDistance(nearest, next) <= 0.5:
+            # Remove food
+            PacmanRules.partialConsume(foundKey, nearest, state)
+
+    applyEscapeRoomAction = staticmethod(applyEscapeRoomAction)
+
+
     def consume( position, state ):
         x,y = position
         # Eat food
@@ -378,6 +417,26 @@ class PacmanRules:
             for index in range( 1, len( state.data.agentStates ) ):
                 state.data.agentStates[index].scaredTimer = SCARED_TIME
     consume = staticmethod( consume )
+
+
+    def partialConsume(foundKey, position, state):
+        x, y = position
+
+        if foundKey and not state.data._lose:
+            state.data.scoreChange += 500
+            state.data._win = True
+
+        if state.data.food[x][y]:
+            state.data.scoreChange += 10
+            state.data.food = state.data.food.copy()
+            state.data.food[x][y] = False
+            state.data._foodEaten = position
+            numFood = state.getNumFood()
+            print(foundKey)
+            if foundKey and not state.data._lose:
+                state.data.scoreChange += 500
+                state.data._win = True
+    partialConsume = staticmethod(partialConsume)
 
 class GhostRules:
     """

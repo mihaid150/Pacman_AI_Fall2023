@@ -397,7 +397,7 @@ def cornersHeuristic(state, problem):
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
     def __init__(self):
-        self.searchFunction = lambda prob: search.aStarSearch(prob, cornersHeuristic)
+        self.searchFunction = lambda prob: search.aStarSearchBasic(prob, cornersHeuristic)
         self.searchType = CornersProblem
 
 class FoodSearchProblem:
@@ -453,7 +453,7 @@ class FoodSearchProblem:
 class AStarFoodSearchAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
     def __init__(self):
-        self.searchFunction = lambda prob: search.aStarSearch(prob, foodHeuristic)
+        self.searchFunction = lambda prob: search.aStarSearchBasic(prob, foodHeuristic)
         self.searchType = FoodSearchProblem
 
 def foodHeuristic(state, problem):
@@ -604,6 +604,7 @@ class EscapeRoomProblem:
         self.walls = startingGameState.getWalls()
         # print("Number of walls at init: ", len(self.walls.asList()))
         self.food = startingGameState.getFood()
+        # print(self.food)
         self.food_len = len(self.food.asList())
         self.startingGameState = startingGameState
         self._expanded = 0
@@ -651,17 +652,12 @@ class EscapeRoomProblem:
 
 
     def getSuccessors(self, state):
-        print("In the getSuccessors function call:")
         successors = []
         self._expanded += 1
         position, food, (food_keys, walls_keys) = state
-        food_grid = [food_item for food_item, _ in food_keys]
         walls_grid = [wall for wall, _ in walls_keys]
         max_x = walls_grid[-1][0]
         max_y = walls_grid[-1][1]
-        # print("Food: ", food_grid)
-        # print("Walls: ", walls_grid)
-        # print("Walls_grid[0]", walls_grid[0])
 
         for direction in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
             x, y = position
@@ -669,29 +665,13 @@ class EscapeRoomProblem:
             # print("Position: y = ", y)
             dx, dy = Actions.directionToVector(direction)
             nextx, nexty = int(x + dx), int(y + dy)
-            # print("Position: nextX = ", nextx)
-            # print("Position: nextY = ", nexty)
-            # print("len(walls_grid): ", len(walls_grid))
-            # print("len(walls_grid[0]): ", len(walls_grid[1]))
-            # print("Max x", walls_grid[-1][0])
-            # print("Max y", walls_grid[-1][1])
 
             if 0 <= nextx <= max_x and 0 <= nexty <= max_y:
-                # print("Enters the cave")
-                # print("Next_x: ", nextx)
-                # print("Next_y: ", nexty)
+                # print("Next X: ", nextx)
+                # print("Next Y: ", nexty)
                 if (nextx, nexty) not in walls_grid:
-                    # print("Enters the cave where no wall")
-                    next_food_list = [list(row) for row in food_grid]  # Convert tuple of tuples to list of lists
-                    # print("Next food list: ", next_food_list)
-                    # next_food = food.copy()
-                    # if next_food[nextx][nexty]:
-                    #     print("Found food at : ", (nextx, nexty))
-                    # next_food[nextx][nexty] = False
-                    print("NextPos: ", (nextx, nexty))
                     next_state = ((nextx, nexty), food, (food_keys, walls_keys))
                     successors.append((next_state, direction, 1))
-        print("The call ended in the getSuccessors function")
         return successors
 
     def getCostOfActions(self, actions):
@@ -714,21 +694,24 @@ class AStarEscapeRoomAgent(SearchAgent):
 
 
 
-def escapeRoomHeuristic(state, problem):
-    position, _, (food_keys, _) = state
+def escapeRoomHeuristic(state, problem, food_found):
+    position, _, (food_keys, walls_keys) = state
     wanted_key = problem.goal_key
 
-    # Check if we have the wanted key
-    for food, key in food_keys:
-        if key == wanted_key:
-            # Calculate the distance to the goal food associated with the goal key
-            return mazeDistance(position, food, problem.startingGameState)
+    if not food_found:
+        # Check if we have the wanted key
+        for food, key in food_keys:
+            if key == wanted_key:
+                # Calculate the distance to the goal food associated with the goal key
+                return mazeDistance(position, food, problem.startingGameState)
 
-    # If we don't have the key, find the key first
-    min_distance_to_key = float('inf')
-    for food, key in food_keys:
-        if key == wanted_key:
-            dist = mazeDistance(position, food, problem.startingGameState)
-            min_distance_to_key = min(min_distance_to_key, dist)
+        # If we don't have the key, find the key first
+        min_distance_to_key = float('inf')
+        for food, key in food_keys:
+            if key == wanted_key:
+                dist = mazeDistance(position, food, problem.startingGameState)
+                min_distance_to_key = min(min_distance_to_key, dist)
+    else:
+        min_distance_to_key = 0
 
     return min_distance_to_key

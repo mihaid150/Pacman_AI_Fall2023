@@ -384,6 +384,7 @@ class GameStateData:
             self._eaten = prevState._eaten
             self.score = prevState.score
 
+
         self._foodEaten = None
         self._foodAdded = None
         self._capsuleEaten = None
@@ -528,6 +529,7 @@ class Game:
         self.totalAgentTimes = [0 for agent in agents]
         self.totalAgentTimeWarnings = [0 for agent in agents]
         self.agentTimeout = False
+        self.foundKey = False
         import cStringIO
         self.agentOutput = [cStringIO.StringIO() for agent in agents]
 
@@ -604,8 +606,11 @@ class Game:
                         self.unmute()
                         return
                 else:
+
                     agent.registerInitialState(self.state.deepCopy())
+                    # self.foundKey = True
                 ## TODO: could this exceed the total time
+
                 self.unmute()
 
         agentIndex = self.startingIndex
@@ -617,7 +622,9 @@ class Game:
             move_time = 0
             skip_action = False
             # Generate an observation of the state
+
             if 'observationFunction' in dir( agent ):
+                print("in observation if")
                 self.mute(agentIndex)
                 if self.catchExceptions:
                     try:
@@ -635,9 +642,11 @@ class Game:
                         return
                 else:
                     observation = agent.observationFunction(self.state.deepCopy())
+                    print("Observation: ", observation)
                 self.unmute()
             else:
                 observation = self.state.deepCopy()
+
 
             # Solicit an action
             action = None
@@ -697,7 +706,11 @@ class Game:
                     self.unmute()
                     return
             else:
-                self.state = self.state.generateSuccessor( agentIndex, action )
+                # self.state = self.state.generateSuccessor( agentIndex, action )
+                print("Found key: ", self.foundKey)
+                if action == Directions.STOP:
+                    self.foundKey = True
+                self.state = self.state.escapeRoomGenerateSuccessor( self.foundKey, agentIndex, action)
 
             # Change the display
             self.display.update( self.state.data )
@@ -705,6 +718,7 @@ class Game:
             ###self.display.update( self.state.makeObservation(idx).data )
 
             # Allow for game specific conditions (winning, losing, etc.)
+
             self.rules.process(self.state, self)
             # Track progress
             if agentIndex == numAgents + 1: self.numMoves += 1
@@ -713,11 +727,12 @@ class Game:
 
             if _BOINC_ENABLED:
                 boinc.set_fraction_done(self.getProgress())
-
+        print("before final try")
         # inform a learning agent of the game result
         for agentIndex, agent in enumerate(self.agents):
             if "final" in dir( agent ) :
                 try:
+
                     self.mute(agentIndex)
                     agent.final( self.state )
                     self.unmute()
@@ -727,3 +742,4 @@ class Game:
                     self.unmute()
                     return
         self.display.finish()
+

@@ -155,6 +155,28 @@ def nullHeuristic(state, problem=None):
     """
     return 0
 
+def aStarSearchBasic(problem, heuristic=nullHeuristic):
+    """Search the node of least total cost first."""
+    "*** YOUR CODE HERE ***"
+    priority_queue = util.PriorityQueue()
+    priority_queue.push((problem.getStartState(), [], 0), 0)
+    visited = set()
+
+    while not priority_queue.isEmpty():
+        state, actions, cost = priority_queue.pop()
+
+        if problem.isGoalState(state):
+            return actions
+
+        if state not in visited:
+            visited.add(state)
+            successors = problem.getSuccessors(state)
+            for successor, action, step_cost in successors:
+                new_actions = actions + [action]
+                new_cost = cost + step_cost
+                heuristic_cost = new_cost + heuristic(successor, problem)
+                priority_queue.push((successor, new_actions, new_cost), heuristic_cost)
+    return []
 
 
 def aStarSearch(problem, heuristic=nullHeuristic):
@@ -162,41 +184,31 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     priority_queue = util.PriorityQueue()
     priority_queue.push((problem.getStartState(), [], 0), 0)
     visited = {}  # Use a dictionary to track visited states with their costs
+    food_found = False
 
     while not priority_queue.isEmpty():
         state, actions, cost = priority_queue.pop()
         curr_pos, next_food, (food_keys, walls_keys) = state
-        # print("Wanted key: ", problem.goal_key)
-        print("Current position: ", curr_pos)
-        # print("Food keys:", state[1][0])  # Debug line
-        # print("State's cost: ", cost)
+        # print("Current position: ", curr_pos)
         if next_food[curr_pos[0]][curr_pos[1]]:
-            print("Found food at current position")
-            print("Checking goal state...")
+            # print("Found food at current position")
+            # print("Checking goal state...")
             if problem.isGoalState(state):
-                print(actions)
+                #food_found = True
                 return actions
 
 
         if state not in visited or cost < visited[state]:
-            # print("In the loop")
             visited[state] = cost
             successors = problem.getSuccessors(state)
-            # print(successors[0][0][0])
             for successor, action, step_cost in successors:
-                print("Successor: ", successor[0])
+                # print("Successor: ", successor[0])
                 new_actions = actions + [action]
                 new_cost = cost + step_cost
-                heuristic_cost = new_cost + heuristic(successor, problem)
-                print("Heuristic cost: ", heuristic_cost)
+                heuristic_cost = new_cost + heuristic(successor, problem, food_found)
+                # print("Heuristic cost: ", heuristic_cost)
                 priority_queue.push((successor, new_actions, new_cost), heuristic_cost)
     return []
-
-
-
-
-
-
 
 # Abbreviations
 bfs = breadthFirstSearch
